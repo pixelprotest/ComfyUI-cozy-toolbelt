@@ -15,6 +15,7 @@ class CubemapToSphericalV2:
                 "output_width": ("INT", {"default": 1024, "min": 64, "max": 8192}),
                 "output_height": ("INT", {"default": 512, "min": 32, "max": 4096}),
                 "edge_width": ("FLOAT", {"default": 0.05, "min": 0.01, "max": 0.2, "step": 0.01}),
+                "mask_blur": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 20.0, "step": 0.1}),
             }
         }
 
@@ -22,7 +23,7 @@ class CubemapToSphericalV2:
     FUNCTION = "convert"
     CATEGORY = "image/processing"
 
-    def convert(self, cubemap_front, cubemap_back, cubemap_left, cubemap_right, cubemap_top, cubemap_bottom, output_width, output_height, edge_width):
+    def convert(self, cubemap_front, cubemap_back, cubemap_left, cubemap_right, cubemap_top, cubemap_bottom, output_width, output_height, edge_width, mask_blur):
         # Combine cubemap faces into a single tensor
         cubemap = torch.stack([
             cubemap_back[0], cubemap_bottom[0], cubemap_front[0],
@@ -74,7 +75,8 @@ class CubemapToSphericalV2:
         output = (output - output.min()) / (output.max() - output.min())
 
         # Apply Gaussian blur to the edge mask
-        blurred_edge_mask = self.custom_gaussian_blur(edge_mask, kernel_size=5, sigma=1.0)
+        kernel_size = max(3, int(mask_blur * 4)) | 1  # Ensure odd kernel size
+        blurred_edge_mask = self.custom_gaussian_blur(edge_mask, kernel_size=kernel_size, sigma=mask_blur)
 
         # Combine the spherical map and the edge mask
         combined_output = self.combine_output_and_mask(output, blurred_edge_mask)
