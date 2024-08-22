@@ -59,11 +59,11 @@ class CubemapToSphericalV2:
         is_z_face = (abs_z > abs_x) & (abs_z > abs_y)
 
         # X faces (left and right)
-        self.sample_face(output, edge_mask, cubemap, x, y, z, is_x_face & (x < 0), 3, edge_width, flip_z=True)  # Left
+        self.sample_face(output, edge_mask, cubemap, x, y, z, is_x_face & (x < 0), 3, edge_width, flip_x=True)  # Left
         self.sample_face(output, edge_mask, cubemap, x, y, z, is_x_face & (x >= 0), 4, edge_width)  # Right
 
         # Y faces (top and bottom)
-        self.sample_face(output, edge_mask, cubemap, x, y, z, is_y_face & (y < 0), 5, edge_width, flip_z=True)  # Top
+        self.sample_face(output, edge_mask, cubemap, x, y, z, is_y_face & (y < 0), 5, edge_width, flip_y=True)  # Top
         self.sample_face(output, edge_mask, cubemap, x, y, z, is_y_face & (y >= 0), 1, edge_width)  # Bottom
 
         # Z faces (front and back)
@@ -85,7 +85,7 @@ class CubemapToSphericalV2:
 
         return (combined_output, mask_output)
 
-    def sample_face(self, output, edge_mask, cubemap, x, y, z, mask, face_idx, edge_width, flip_x=False, flip_z=False):
+    def sample_face(self, output, edge_mask, cubemap, x, y, z, mask, face_idx, edge_width, flip_x=False, flip_y=False):
         w, h = cubemap.shape[2], cubemap.shape[3]
 
         if face_idx in [3, 4]:  # Left or Right face
@@ -100,7 +100,7 @@ class CubemapToSphericalV2:
 
         if flip_x:
             uu = -uu
-        if flip_z:
+        if flip_y:
             vv = -vv
 
         # Scale to image coordinates
