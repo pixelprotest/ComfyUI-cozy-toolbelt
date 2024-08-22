@@ -14,8 +14,8 @@ class CubemapToSphericalV2:
                 "cubemap_bottom": ("IMAGE",),
                 "output_width": ("INT", {"default": 1024, "min": 64, "max": 8192}),
                 "output_height": ("INT", {"default": 512, "min": 32, "max": 4096}),
-                "edge_width": ("FLOAT", {"default": 0.05, "min": 0.01, "max": 0.2, "step": 0.01}),
-                "mask_blur": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 20.0, "step": 0.1}),
+                "edge_width": ("FLOAT", {"default": 5.0, "min": 0.1, "max": 20.0, "step": 0.1}),
+                "mask_blur": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 100.0, "step": 0.1}),
             }
         }
 
@@ -24,6 +24,9 @@ class CubemapToSphericalV2:
     CATEGORY = "image/processing"
 
     def convert(self, cubemap_front, cubemap_back, cubemap_left, cubemap_right, cubemap_top, cubemap_bottom, output_width, output_height, edge_width, mask_blur):
+        # Convert edge_width from percentage to decimal
+        edge_width = edge_width / 100.0
+
         # Combine cubemap faces into a single tensor
         cubemap = torch.stack([
             cubemap_back[0], cubemap_bottom[0], cubemap_front[0],
@@ -78,14 +81,14 @@ class CubemapToSphericalV2:
         kernel_size = max(3, int(mask_blur * 4)) | 1  # Ensure odd kernel size
         blurred_edge_mask = self.custom_gaussian_blur(edge_mask, kernel_size=kernel_size, sigma=mask_blur)
 
-        # Combine the spherical map and the edge mask
-        combined_output = self.combine_output_and_mask(output, blurred_edge_mask)
+        # Combine sharp and blurred masks
+        combined_mask = torch.maximum(edge_mask, blurred_edge_mask)
 
         # Add batch dimension and ensure float32 dtype
-        combined_output = combined_output.unsqueeze(0).to(torch.float32)
-        mask_output = blurred_edge_mask.unsqueeze(0).unsqueeze(0).to(torch.float32)
+        output = output.unsqueeze(0).to(torch.float32)
+        mask_output = combined_mask.unsqueeze(0).unsqueeze(0).to(torch.float32)
 
-        return (combined_output, mask_output)
+        return (output, mask_output)
 
     def sample_face(self, output, edge_mask, cubemap, x, y, z, mask, face_idx, edge_width, flip_x=False, flip_y=False):
         w, h = cubemap.shape[2], cubemap.shape[3]
@@ -141,24 +144,10 @@ class CubemapToSphericalV2:
 
         return blurred.squeeze(0).squeeze(0)
 
-    def combine_output_and_mask(self, output, mask):
-        # Create a red overlay for the mask
-        red_overlay = torch.zeros_like(output)
-        red_overlay[:, :, 0] = 1  # Set red channel to 1
-
-        # Increase the intensity of the edge effect
-        mask = mask * 2  # Increase the intensity
-        mask = mask.clamp(0, 1)  # Ensure values are between 0 and 1
-
-        # Blend the original output with the red overlay using the mask
-        combined = output * (1 - mask.unsqueeze(-1)) + red_overlay * mask.unsqueeze(-1)
-
-        return combined
-
 NODE_CLASS_MAPPINGS = {
     "CubemapToSphericalV2": CubemapToSphericalV2
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "CubemapToSphericalV2": "Cubemap to Spherical V2 (with Edge and Mask)"
+    "CubemapToSphericalV2": "Cubemap to Spherical V2 (with Mask)"
 }
