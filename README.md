@@ -10,16 +10,13 @@ Converts a 6-image cubemap input into a single equirectangular (spherical) map.
 
 ## Installation
 
-1. Clone this repository into your ComfyUI custom nodes folder:
+1. Clone this repository into your ComfyUI `custom_nodes` folder:
 
-	```
-	cd /path/to/ComfyUI/custom_nodes
-	git clone https://github.com/pixelprotest/ComfyUI-cozy-toolbelt
-	```
+	`git clone https://github.com/pixelprotest/ComfyUI-cozy-toolbelt`
 
 2. Install the required dependencies:
 
-	```pip install -r requirements.txt```
+	`pip install -r requirements.txt`
 
 3. Restart ComfyUI or reload custom nodes.
 
