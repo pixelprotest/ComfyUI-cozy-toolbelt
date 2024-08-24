@@ -29,7 +29,7 @@ class SphericalToCubemapV2:
         cubemap_faces = []
         for i, (x_face, y_face, z_face) in enumerate([
             (-y, -torch.ones_like(x), -x),  # Front
-            (y, -torch.ones_like(x), -x),  # Back
+            (-y, torch.ones_like(x), x),    # Back
             (-torch.ones_like(x), -y, -x),  # Left
             (torch.ones_like(x), y, -x),  # Right
             (y, -x, torch.ones_like(x)),  # Top
@@ -53,6 +53,13 @@ class SphericalToCubemapV2:
 
         # Convert to the desired output format [batch, height, width, channels]
         cubemap_faces = [face.permute(0, 2, 3, 1) for face in cubemap_faces]
+
+        # Flip the Front face horizontally
+        cubemap_faces[0] = torch.flip(cubemap_faces[0], dims=[2])
+        
+        # Rotate the Back face 180 degrees counter-clockwise and flip horizontally
+        cubemap_faces[1] = torch.rot90(cubemap_faces[1], k=2, dims=[1, 2])
+        cubemap_faces[1] = torch.flip(cubemap_faces[1], dims=[2])
 
         return tuple(cubemap_faces)
 
