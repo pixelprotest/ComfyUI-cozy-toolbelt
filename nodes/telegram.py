@@ -21,17 +21,25 @@ class CombineAndSendToTelegram:
         return {
             "required": {
                 "images": ("IMAGE",),
+                "fps": ("INT", {"default": 10, "min": 1, "max": 60}),
+            },
+            "optional": {
                 "bot_token": ("STRING", {"default": ""}),
                 "chat_id": ("STRING", {"default": ""}),
-                "fps": ("INT", {"default": 10, "min": 1, "max": 60}),
             },
         }
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("video_path",)
     FUNCTION = "process_and_send"
     CATEGORY = "image/postprocessing"
+    OUTPUT_NODE = True
 
-    def process_and_send(self, images, bot_token, chat_id, fps):
+    @classmethod
+    def IS_CHANGED(s, images, fps, bot_token, chat_id):
+        return float("NaN")  # Always process
+
+    def process_and_send(self, images, fps, bot_token="", chat_id=""):
         print("HELLO processing and sending now")
         ## if bot_token or chat_id is not set, 
         ## use the default values from the .env file
@@ -75,8 +83,6 @@ class CombineAndSendToTelegram:
         # Clean up temporary files
         for file in image_files:
             os.remove(file)
-        os.remove(output_file)
-        os.rmdir(temp_dir)
 
         if response.status_code == 200:
             print("Video sent successfully to Telegram!")
@@ -84,8 +90,23 @@ class CombineAndSendToTelegram:
             print(f"Failed to send video. Status code: {response.status_code}")
             print(f"Response: {response.text}")
 
-        return ()
+        return (output_file,)
 
+    @classmethod
+    def IS_CHANGED(s, images, fps, bot_token, chat_id):
+        return float("NaN")
+
+    @classmethod
+    def VALIDATE_INPUTS(s, images, fps, bot_token="", chat_id=""):
+        if not isinstance(images, torch.Tensor):
+            return "Invalid image input"
+        if not isinstance(fps, int) or fps < 1 or fps > 60:
+            return "FPS must be an integer between 1 and 60"
+        if bot_token and not isinstance(bot_token, str):
+            return "Bot token must be a string"
+        if chat_id and not isinstance(chat_id, str):
+            return "Chat ID must be a string"
+        return True
 NODE_CLASS_MAPPINGS = {
     "CombineAndSendToTelegram": CombineAndSendToTelegram
 }
