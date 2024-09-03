@@ -32,6 +32,13 @@ class CombineAndSendToTelegram:
     CATEGORY = "image/postprocessing"
 
     def process_and_send(self, images, bot_token, chat_id, fps):
+        ## if bot_token or chat_id is not set, 
+        ## use the default values from the .env file
+        if bot_token == "":
+            bot_token = TELEGRAM_BOT_TOKEN
+        if chat_id == "":
+            chat_id = TELEGRAM_CHAT_ID
+
         # Convert tensor images to PIL images and save as temporary files
         temp_dir = tempfile.mkdtemp()
         image_files = []
