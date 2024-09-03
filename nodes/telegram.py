@@ -98,8 +98,8 @@ class CombineAndSendToTelegram:
 
     @classmethod
     def VALIDATE_INPUTS(s, images, fps, bot_token="", chat_id=""):
-        if not isinstance(images, torch.Tensor):
-            return "Invalid image input"
+        # if not isinstance(images, torch.Tensor):
+        #     return "Invalid image input"
         if not isinstance(fps, int) or fps < 1 or fps > 60:
             return "FPS must be an integer between 1 and 60"
         if bot_token and not isinstance(bot_token, str):
