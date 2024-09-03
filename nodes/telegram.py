@@ -32,6 +32,7 @@ class CombineAndSendToTelegram:
     CATEGORY = "image/postprocessing"
 
     def process_and_send(self, images, bot_token, chat_id, fps):
+        print("HELLO processing and sending now")
         ## if bot_token or chat_id is not set, 
         ## use the default values from the .env file
         if bot_token == "":
@@ -48,6 +49,9 @@ class CombineAndSendToTelegram:
             file_path = os.path.join(temp_dir, f"frame_{i:04d}.png")
             img_pil.save(file_path)
             image_files.append(file_path)
+
+        print(f"bot_token: {bot_token}")
+        print(f"chat_id: {chat_id}")
 
         # Combine images into a video using ffmpeg
         output_file = os.path.join(temp_dir, "output.mp4")
