@@ -39,6 +39,9 @@ send a message to your bot on telegram,
 then check the url above again and grab chat id from the response
 then store it in the .env file as `TELEGRAM_CHAT_ID`.
 
+NOTE you can put the .env file either in the root of the ComfyUI folder or in the root of this plugin folder e.g. `./custom_nodes/ComfyUI-cozy-toolbelt`
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
