@@ -16,31 +16,27 @@ class AnimatedSeed:
     RETURN_TYPES = ("INT",)
     FUNCTION = "generate_seed"
     CATEGORY = "utils"
+    _seed = 0
+
+    def get_new_seed(self, mode):
+        if mode=="randomize":
+            new_seed = random.randint(0, 0xffffffffffffffff)
+            self._seed = new_seed
+        elif mode=="increment":
+            new_seed = self._seed + 1
+            self._seed = new_seed
+        
+        return self._seed
 
     def generate_seed(self, keyframes, current_frame, mode, base_seed):
-        # Parse keyframes
-        frame_seed_pairs = re.findall(r'(\d+):(\d+)', keyframes)
-        frame_seed_pairs = [(int(frame), int(seed)) for frame, seed in frame_seed_pairs]
-        frame_seed_pairs.sort(key=lambda x: x[0])
+        frame_numbers = [int(frame.strip()) for frame in keyframes.split(',')]
 
-        # Find the appropriate seed based on current frame
-        current_seed = base_seed
-        for frame, seed in frame_seed_pairs:
-            if current_frame >= frame:
-                current_seed = seed
-            else:
-                break
+        if current_frame in frame_numbers:
+            new_seed = self.get_new_seed(mode)
+            return (new_seed, )
 
-        # Apply mode
-        if mode == "randomize":
-            random.seed(current_seed + current_frame)
-            final_seed = random.randint(0, 0xffffffffffffffff)
-        elif mode == "increment":
-            final_seed = (current_seed + current_frame) % 0xffffffffffffffff
-        else:
-            final_seed = current_seed
+        return (self._seed, )
 
-        return (final_seed,)
 
 NODE_CLASS_MAPPINGS = {
     "AnimatedSeed": AnimatedSeed
