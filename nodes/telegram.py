@@ -41,7 +41,6 @@ class CombineAndSendToTelegram:
         return float("NaN")  # Always process
 
     def process_and_send(self, images, fps, message, bot_token="", chat_id=""):
-        print("HELLO processing and sending now")
         ## if bot_token or chat_id is not set, 
         ## use the default values from the .env file
         if bot_token == "":
