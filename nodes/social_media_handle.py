@@ -40,37 +40,53 @@ class BurnSocialMediaHandle:
         # Convert to PIL Image
         img_pil = Image.fromarray((img_np * 255).astype(np.uint8))
 
-        # Prepare platform prefix
-        prefix_map = {
-            "x.com": "x.com/",
-            "github": "github.com/",
-            "instagram": "@"
-        }
-        prefix = prefix_map.get(platform, "")
-
-        # Combine prefix and handle
-        full_text = f"{prefix}{handle}"
+        # Download and prepare logo
+        logo_url = self.LOGO_URLS.get(platform)
+        if logo_url:
+            response = requests.get(logo_url)
+            logo = Image.open(requests.get(logo_url, stream=True).raw)
+        else:
+            logo = None
 
         # Prepare text
         font_path = os.path.join(os.path.dirname(__file__), "..", "fonts", "DejaVuSans-Bold.ttf")
         font = ImageFont.truetype(font_path, font_size)
         draw = ImageDraw.Draw(img_pil)
-        text_bbox = draw.textbbox((0, 0), full_text, font=font)
+        text_bbox = draw.textbbox((0, 0), handle, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
+
+        # Resize logo to match text height
+        if logo:
+            aspect_ratio = logo.width / logo.height
+            new_logo_height = int(text_height * 0.5)  # Make logo slightly smaller than text
+            new_logo_width = int(new_logo_height * aspect_ratio)
+            logo = logo.resize((new_logo_width, new_logo_height), Image.LANCZOS)
+
+        # Calculate total width (logo + text)
+        total_width = (logo.width + 5 + text_width) if logo else text_width
 
         # Calculate position
         img_width, img_height = img_pil.size
         position_map = {
             "top_left": (10, 10),
-            "top_right": (img_width - text_width - 10, 10),
+            "top_right": (img_width - total_width - 10, 10),
             "bottom_left": (10, img_height - text_height - 10),
-            "bottom_right": (img_width - text_width - 10, img_height - text_height - 10)
+            "bottom_right": (img_width - total_width - 10, img_height - text_height - 10)
         }
         pos = position_map.get(position, (10, 10))
 
+        # Paste logo if available
+        if logo:
+            logo_y_offset = int((text_height - logo.height) / 2)  # Center logo vertically with text
+            logo_pos = (pos[0], pos[1] + logo_y_offset)
+            img_pil.paste(logo, logo_pos, logo if logo.mode == 'RGBA' else None)
+            text_pos = (pos[0] + logo.width + 5, pos[1])
+        else:
+            text_pos = pos
+
         # Draw text on image
-        draw.text(pos, full_text, font=font, fill=(255, 255, 255))
+        draw.text(text_pos, handle, font=font, fill=(255, 255, 255))
 
         # Convert back to tensor
         img_np = np.array(img_pil)
@@ -85,7 +101,6 @@ class BurnSocialMediaHandle:
         print(f"-- image.shape end: {img_tensor.shape}")
 
         return (img_tensor,)
-    
 
 NODE_CLASS_MAPPINGS = {
     "BurnSocialMediaHandle": BurnSocialMediaHandle
