@@ -22,55 +22,63 @@ class BurnSocialMediaHandle:
     CATEGORY = "image/postprocessing"
 
     def burn_handle(self, image, handle, platform, position, font_size):
-        # Convert tensor image to PIL Image
-        img_np = image.squeeze().permute(1, 2, 0).cpu().numpy()
+        print(f"-- image.shape start: {image.shape}")
+        # Convert tensor image to numpy array
+        img_np = image.squeeze().cpu().numpy()
+        
+        # Ensure the image is in the correct format (HWC)
+        if img_np.shape[2] != 3:
+            img_np = np.transpose(img_np, (1, 2, 0))
+        
+        # Convert to PIL Image
         img_pil = Image.fromarray((img_np * 255).astype(np.uint8))
 
-        # Load platform logo
-        logo_path = os.path.join(os.path.dirname(__file__), f"{platform.replace('.', '_')}_logo.png")
-        if not os.path.exists(logo_path):
-            # Download logo if not exists
-            url = f"https://raw.githubusercontent.com/pixelprotest/ComfyUI-cozy-toolbelt/main/assets/{platform.replace('.', '_')}_logo.png"
-            response = requests.get(url)
-            if response.status_code == 200:
-                with open(logo_path, 'wb') as f:
-                    f.write(response.content)
-            else:
-                raise Exception(f"Failed to download logo for {platform}")
+        # Prepare platform prefix
+        prefix_map = {
+            "x.com": "x.com/",
+            "github": "github.com/",
+            "instagram": "@"
+        }
+        prefix = prefix_map.get(platform, "")
 
-        logo = Image.open(logo_path).convert("RGBA")
-        logo = logo.resize((font_size, font_size), Image.LANCZOS)
+        # Combine prefix and handle
+        full_text = f"{prefix}{handle}"
 
         # Prepare text
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
-        text = f"/{handle}"
-        text_width, text_height = font.getsize(text)
-
-        # Create a new image for handle
-        handle_img = Image.new('RGBA', (logo.width + text_width + 10, max(logo.height, text_height)), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(handle_img)
-
-        # Paste logo and draw text
-        handle_img.paste(logo, (0, (handle_img.height - logo.height) // 2), logo)
-        draw.text((logo.width + 5, (handle_img.height - text_height) // 2), text, font=font, fill=(255, 255, 255, 255))
+        font_path = os.path.join(os.path.dirname(__file__), "..", "fonts", "DejaVuSans-Bold.ttf")
+        font = ImageFont.truetype(font_path, font_size)
+        draw = ImageDraw.Draw(img_pil)
+        text_bbox = draw.textbbox((0, 0), full_text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
 
         # Calculate position
-        if position == "top_left":
-            pos = (10, 10)
-        elif position == "top_right":
-            pos = (img_pil.width - handle_img.width - 10, 10)
-        elif position == "bottom_left":
-            pos = (10, img_pil.height - handle_img.height - 10)
-        else:  # bottom_right
-            pos = (img_pil.width - handle_img.width - 10, img_pil.height - handle_img.height - 10)
+        img_width, img_height = img_pil.size
+        position_map = {
+            "top_left": (10, 10),
+            "top_right": (img_width - text_width - 10, 10),
+            "bottom_left": (10, img_height - text_height - 10),
+            "bottom_right": (img_width - text_width - 10, img_height - text_height - 10)
+        }
+        pos = position_map.get(position, (10, 10))
 
-        # Paste handle image onto original image
-        img_pil.paste(handle_img, pos, handle_img)
+        # Draw text on image
+        draw.text(pos, full_text, font=font, fill=(255, 255, 255))
 
         # Convert back to tensor
-        img_tensor = torch.from_numpy(np.array(img_pil).astype(np.float32) / 255.0).unsqueeze(0).permute(0, 3, 1, 2)
+        img_np = np.array(img_pil)
+        img_tensor = torch.from_numpy(img_np).float() / 255.0
+        img_tensor = img_tensor.unsqueeze(0)  # Add batch dimension
+        
+        # Ensure the image is in float32 format
+        img_tensor = img_tensor.to(torch.float32)
+        
+        # Clamp values to the range [0, 1]
+        img_tensor = torch.clamp(img_tensor, 0, 1)
+        print(f"-- image.shape end: {img_tensor.shape}")
 
         return (img_tensor,)
+    
 
 NODE_CLASS_MAPPINGS = {
     "BurnSocialMediaHandle": BurnSocialMediaHandle
