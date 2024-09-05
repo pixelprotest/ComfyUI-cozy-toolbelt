@@ -19,8 +19,8 @@ class AnimatedSeed:
     RETURN_TYPES = ("INT",)
     FUNCTION = "generate_seed"
     CATEGORY = "utils"
-    OUTPUT_NODE = True
 
+    @classmethod
     def get_new_seed(self, mode, current_seed):
         if mode == "randomize":
             new_seed = random.randint(0, 0xffffffffffffffff)
@@ -34,14 +34,20 @@ class AnimatedSeed:
         frame_numbers = [int(frame.strip()) for frame in keyframes.split(',')]
 
         if self.stored_seed is None:
-            self.stored_seed = base_seed
+            self.__class__.stored_seed = base_seed
 
         if current_frame in frame_numbers:
-            new_seed = self.get_new_seed(mode, self.stored_seed)
-            self.stored_seed = new_seed
+            new_seed = self.get_new_seed(mode, self.__class__.stored_seed)
+            self.__class__.stored_seed = new_seed
             return (new_seed,)
 
-        return (self.stored_seed,)
+        return (self.__class__.stored_seed,)
+
+    @classmethod
+    def IS_CHANGED(self, keyframes, current_frame, mode, base_seed):
+        return float("nan")
+
+
 NODE_CLASS_MAPPINGS = {
     "AnimatedSeed": AnimatedSeed
 }
