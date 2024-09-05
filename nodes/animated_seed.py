@@ -2,8 +2,7 @@ import re
 import random
 
 class AnimatedSeed:
-    def __init__(self):
-        self.stored_seed = None
+    OUTPUT_SEED = None
 
     @classmethod
     def INPUT_TYPES(s):
@@ -21,7 +20,7 @@ class AnimatedSeed:
     CATEGORY = "utils"
 
     @classmethod
-    def get_new_seed(self, mode, current_seed):
+    def get_new_seed(cls, mode, current_seed):
         if mode == "randomize":
             new_seed = random.randint(0, 0xffffffffffffffff)
         elif mode == "increment":
@@ -34,17 +33,17 @@ class AnimatedSeed:
         frame_numbers = [int(frame.strip()) for frame in keyframes.split(',')]
 
         if self.stored_seed is None:
-            self.__class__.stored_seed = base_seed
+            AnimatedSeed.OUTPUT_SEED = base_seed
 
         if current_frame in frame_numbers:
-            new_seed = self.get_new_seed(mode, self.__class__.stored_seed)
-            self.__class__.stored_seed = new_seed
+            new_seed = self.get_new_seed(mode, AnimatedSeed.OUTPUT_SEED)
+            AnimatedSeed.OUTPUT_SEED = new_seed
             return (new_seed,)
 
-        return (self.__class__.stored_seed,)
+        return (AnimatedSeed.OUTPUT_SEED, )
 
     @classmethod
-    def IS_CHANGED(self, keyframes, current_frame, mode, base_seed):
+    def IS_CHANGED(cls, keyframes, current_frame, mode, base_seed):
         return float("nan")
 
 
