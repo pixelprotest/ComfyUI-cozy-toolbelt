@@ -19,6 +19,7 @@ class AnimatedSeed:
     RETURN_TYPES = ("INT",)
     FUNCTION = "generate_seed"
     CATEGORY = "utils"
+    OUTPUT_NODE = True
 
     def get_new_seed(self, mode, current_seed):
         if mode == "randomize":
