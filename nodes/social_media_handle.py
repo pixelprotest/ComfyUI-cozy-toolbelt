@@ -77,7 +77,8 @@ class BurnSocialMediaHandle:
         if not logo: ## if there is no logo, we just return the straight burnin position
             return burnin_pos
 
-        logo_y_offset = int((text_height - logo.height) / 4)  # Center logo vertically with text
+        # logo_y_offset = int((text_height - logo.height) / 2)  # Center logo vertically with text
+        logo_y_offset = int(logo.height / 4)
         logo_pos = (burnin_pos[0], burnin_pos[1] + logo_y_offset)
         img_pil.paste(logo, logo_pos, logo if logo.mode == 'RGBA' else None)
         text_pos = (burnin_pos[0] + logo.width + 5, burnin_pos[1])
