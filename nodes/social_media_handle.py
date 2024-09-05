@@ -12,10 +12,11 @@ class BurnSocialMediaHandle:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "handle": ("STRING", {"default": ""}),
+                "username": ("STRING", {"default": ""}),
                 "platform": (["x.com", "github", "instagram"],),
                 "position": (["top_left", "top_right", "bottom_left", "bottom_right"],),
                 "font_size": ("INT", {"default": 24, "min": 8, "max": 72}),
+                "size_mult": ("FLOAT", {"default": 0.5, "min": 0.1, "max": 2.0}),
             },
         }
 
@@ -28,8 +29,106 @@ class BurnSocialMediaHandle:
         "instagram": "https://www.instagram.com/static/images/ico/favicon.ico/36b3ee2d91ed.ico",
         }
 
-    def burn_handle(self, image, handle, platform, position, font_size):
+    def burn_handle(self, image, username, platform, position, font_size, size_mult):
         print(f"-- image.shape start: {image.shape}")
+        img_pil = self.tensor_to_pil(image)
+        ## ----------------------------------------------------------------
+
+        img_pil = self.burn_handle_on_image(img_pil, username, platform, position, font_size, size_mult)
+
+        ## ----------------------------------------------------------------
+        img_tensor = self.pil_to_tensor(img_pil)
+        print(f"-- image.shape end: {img_tensor.shape}")
+
+        return (img_tensor,)
+
+    def burn_handle_on_image(self, img_pil, username, platform, position, font_size, size_mult):
+        logo = self.download_logo(platform)
+
+        ## initialize the draw object
+        draw_obj = ImageDraw.Draw(img_pil)
+
+        ## prepare the font
+        font_obj = self.get_font(font_size)
+
+        ## get the height and width of the final text
+        text_height, text_width = self.prepare_text(img_pil, username, font_obj)
+
+        ## resize the logo to match the text height
+        logo = self.resize_logo_to_match_text(logo, text_height, size_mult=size_mult)
+
+        ## calculate the width of the burnin
+        burnin_width = (logo.width + 5 + text_width) if logo else text_width
+
+        ## now grab the position of the logo
+        burnin_pos = self.calculate_logo_position(img_pil, position, text_height, burnin_width)
+
+        ## paste in the logo in front of the burn in text
+        text_pos = self.paste_logo(img_pil, logo, burnin_pos)
+
+        ## draw the text
+        draw_obj.text(text_pos, username, font=font_obj, fill=(255, 255, 255))
+
+        return img_pil
+        
+    
+    def paste_logo(self, img_pil, logo, burnin_pos):
+        if not logo: ## if there is no logo, we just return the straight burnin position
+            return burnin_pos
+
+        logo_y_offset = int((text_height - logo.height) / 2)  # Center logo vertically with text
+        logo_pos = (burnin_pos[0], burnin_pos[1] + logo_y_offset)
+        img_pil.paste(logo, logo_pos, logo if logo.mode == 'RGBA' else None)
+        text_pos = (burnin_pos[0] + logo.width + 5, burnin_pos[1])
+        return text_pos
+    
+    def prepare_text(self, draw_obj, username, font):
+        ## now we can get the bbox, width and height of the text
+        text_bbox = draw_obj.textbbox((0, 0), username, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        return text_height, text_width
+    
+    def get_font(self, font_size):
+        font_path = os.path.join(os.path.dirname(__file__), "..", "fonts", "DejaVuSans-Bold.ttf")
+        font = ImageFont.truetype(font_path, font_size)
+        return font
+
+    def calculate_logo_position(self, image, position_name, text_height, total_width):
+        """ receives a PIL image and returns the position of the logo """
+        img_width, img_height = image.size
+        position_map = {
+            "top_left": (10, 10),
+            "top_right": (img_width - total_width - 10, 10),
+            "bottom_left": (10, img_height - text_height - 10),
+            "bottom_right": (img_width - total_width - 10, img_height - text_height - 10)
+        }
+        pos = position_map.get(position_name, (10, 10))
+
+        return pos
+
+    def resize_logo_to_match_text(self, logo, text_height, size_mult=1.0):
+        if not logo:
+            return 
+
+        ## get the aspect ratio of the logo
+        aspect_ratio = logo.width / logo.height
+        new_logo_height = int(text_height * size_mult)  # Make logo slightly smaller than text
+        new_logo_width = int(new_logo_height * aspect_ratio)
+        logo = logo.resize((new_logo_width, new_logo_height), Image.LANCZOS)
+
+        return logo
+    
+    def download_logo(self, platform):
+        url = self.LOGO_URLS.get(platform)
+        logo = None
+        if url:
+            response = requests.get(url, stream=True).raw 
+            logo = Image.open(response)
+        return logo
+
+    def tensor_to_pil(self, image):
         # Convert tensor image to numpy array
         img_np = image.squeeze().cpu().numpy()
         
@@ -40,56 +139,11 @@ class BurnSocialMediaHandle:
         # Convert to PIL Image
         img_pil = Image.fromarray((img_np * 255).astype(np.uint8))
 
-        # Download and prepare logo
-        logo_url = self.LOGO_URLS.get(platform)
-        if logo_url:
-            response = requests.get(logo_url)
-            logo = Image.open(requests.get(logo_url, stream=True).raw)
-        else:
-            logo = None
+        return img_pil
 
-        # Prepare text
-        font_path = os.path.join(os.path.dirname(__file__), "..", "fonts", "DejaVuSans-Bold.ttf")
-        font = ImageFont.truetype(font_path, font_size)
-        draw = ImageDraw.Draw(img_pil)
-        text_bbox = draw.textbbox((0, 0), handle, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        text_height = text_bbox[3] - text_bbox[1]
-
-        # Resize logo to match text height
-        if logo:
-            aspect_ratio = logo.width / logo.height
-            new_logo_height = int(text_height * 0.5)  # Make logo slightly smaller than text
-            new_logo_width = int(new_logo_height * aspect_ratio)
-            logo = logo.resize((new_logo_width, new_logo_height), Image.LANCZOS)
-
-        # Calculate total width (logo + text)
-        total_width = (logo.width + 5 + text_width) if logo else text_width
-
-        # Calculate position
-        img_width, img_height = img_pil.size
-        position_map = {
-            "top_left": (10, 10),
-            "top_right": (img_width - total_width - 10, 10),
-            "bottom_left": (10, img_height - text_height - 10),
-            "bottom_right": (img_width - total_width - 10, img_height - text_height - 10)
-        }
-        pos = position_map.get(position, (10, 10))
-
-        # Paste logo if available
-        if logo:
-            logo_y_offset = int((text_height - logo.height) / 2)  # Center logo vertically with text
-            logo_pos = (pos[0], pos[1] + logo_y_offset)
-            img_pil.paste(logo, logo_pos, logo if logo.mode == 'RGBA' else None)
-            text_pos = (pos[0] + logo.width + 5, pos[1])
-        else:
-            text_pos = pos
-
-        # Draw text on image
-        draw.text(text_pos, handle, font=font, fill=(255, 255, 255))
-
+    def pil_to_tensor(self, image):
         # Convert back to tensor
-        img_np = np.array(img_pil)
+        img_np = np.array(image)
         img_tensor = torch.from_numpy(img_np).float() / 255.0
         img_tensor = img_tensor.unsqueeze(0)  # Add batch dimension
         
@@ -98,10 +152,9 @@ class BurnSocialMediaHandle:
         
         # Clamp values to the range [0, 1]
         img_tensor = torch.clamp(img_tensor, 0, 1)
-        print(f"-- image.shape end: {img_tensor.shape}")
 
-        return (img_tensor,)
-
+        return img_tensor
+    
 NODE_CLASS_MAPPINGS = {
     "BurnSocialMediaHandle": BurnSocialMediaHandle
 }
