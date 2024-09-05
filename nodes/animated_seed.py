@@ -32,7 +32,7 @@ class AnimatedSeed:
     def generate_seed(self, keyframes, current_frame, mode, base_seed):
         frame_numbers = [int(frame.strip()) for frame in keyframes.split(',')]
 
-        if self.stored_seed is None:
+        if AnimatedSeed.OUTPUT_SEED is None:
             AnimatedSeed.OUTPUT_SEED = base_seed
 
         if current_frame in frame_numbers:
