@@ -17,6 +17,7 @@ class BurnSocialMediaHandle:
                 "position": (["top_left", "top_right", "bottom_left", "bottom_right"],),
                 "font_size": ("INT", {"default": 24, "min": 8, "max": 72}),
                 "size_mult": ("FLOAT", {"default": 0.5, "min": 0.1, "max": 2.0}),
+                "add_logo": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -26,15 +27,15 @@ class BurnSocialMediaHandle:
     LOGO_URLS = {
         "x.com": "https://about.x.com/content/dam/about-twitter/x/large-x-logo.png",
         "github": "https://github.githubassets.com/favicons/favicon.png",
-        "instagram": "https://www.instagram.com/static/images/ico/favicon.ico/36b3ee2d91ed.ico",
+        "instagram": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Instagram_logo.png/600px-Instagram_logo.png",
         }
 
-    def burn_handle(self, image, username, platform, position, font_size, size_mult):
+    def burn_handle(self, image, username, platform, position, font_size, size_mult, add_logo):
         print(f"-- image.shape start: {image.shape}")
         img_pil = self.tensor_to_pil(image)
         ## ----------------------------------------------------------------
 
-        img_pil = self.burn_handle_on_image(img_pil, username, platform, position, font_size, size_mult)
+        img_pil = self.burn_handle_on_image(img_pil, username, platform, position, font_size, size_mult, add_logo)
 
         ## ----------------------------------------------------------------
         img_tensor = self.pil_to_tensor(img_pil)
@@ -42,8 +43,8 @@ class BurnSocialMediaHandle:
 
         return (img_tensor,)
 
-    def burn_handle_on_image(self, img_pil, username, platform, position, font_size, size_mult):
-        logo = self.download_logo(platform)
+    def burn_handle_on_image(self, img_pil, username, platform, position, font_size, size_mult, add_logo):
+        logo = self.download_logo(platform, add_logo)
 
         ## initialize the draw object
         draw_obj = ImageDraw.Draw(img_pil)
@@ -52,7 +53,7 @@ class BurnSocialMediaHandle:
         font_obj = self.get_font(font_size)
 
         ## get the height and width of the final text
-        text_height, text_width = self.prepare_text(img_pil, username, font_obj)
+        text_height, text_width = self.prepare_text(draw_obj, username, font_obj)
 
         ## resize the logo to match the text height
         logo = self.resize_logo_to_match_text(logo, text_height, size_mult=size_mult)
@@ -64,7 +65,7 @@ class BurnSocialMediaHandle:
         burnin_pos = self.calculate_logo_position(img_pil, position, text_height, burnin_width)
 
         ## paste in the logo in front of the burn in text
-        text_pos = self.paste_logo(img_pil, logo, burnin_pos)
+        text_pos = self.paste_logo(img_pil, logo, burnin_pos, text_height)
 
         ## draw the text
         draw_obj.text(text_pos, username, font=font_obj, fill=(255, 255, 255))
@@ -72,11 +73,11 @@ class BurnSocialMediaHandle:
         return img_pil
         
     
-    def paste_logo(self, img_pil, logo, burnin_pos):
+    def paste_logo(self, img_pil, logo, burnin_pos, text_height):
         if not logo: ## if there is no logo, we just return the straight burnin position
             return burnin_pos
 
-        logo_y_offset = int((text_height - logo.height) / 2)  # Center logo vertically with text
+        logo_y_offset = int((text_height - logo.height) / 4)  # Center logo vertically with text
         logo_pos = (burnin_pos[0], burnin_pos[1] + logo_y_offset)
         img_pil.paste(logo, logo_pos, logo if logo.mode == 'RGBA' else None)
         text_pos = (burnin_pos[0] + logo.width + 5, burnin_pos[1])
@@ -98,11 +99,12 @@ class BurnSocialMediaHandle:
     def calculate_logo_position(self, image, position_name, text_height, total_width):
         """ receives a PIL image and returns the position of the logo """
         img_width, img_height = image.size
+        offset = 30
         position_map = {
-            "top_left": (10, 10),
-            "top_right": (img_width - total_width - 10, 10),
-            "bottom_left": (10, img_height - text_height - 10),
-            "bottom_right": (img_width - total_width - 10, img_height - text_height - 10)
+            "top_left": (offset, offset),
+            "top_right": (img_width - total_width - offset, offset),
+            "bottom_left": (offset, img_height - text_height - offset),
+            "bottom_right": (img_width - total_width - offset, img_height - text_height - offset)
         }
         pos = position_map.get(position_name, (10, 10))
 
@@ -120,9 +122,12 @@ class BurnSocialMediaHandle:
 
         return logo
     
-    def download_logo(self, platform):
-        url = self.LOGO_URLS.get(platform)
+    def download_logo(self, platform, add_logo):
         logo = None
+        if not add_logo:
+            return logo
+
+        url = self.LOGO_URLS.get(platform)
         if url:
             response = requests.get(url, stream=True).raw 
             logo = Image.open(response)
