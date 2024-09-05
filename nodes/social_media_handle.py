@@ -4,6 +4,8 @@ from PIL import Image, ImageDraw, ImageFont
 import torch
 import numpy as np
 
+
+
 class BurnSocialMediaHandle:
     @classmethod
     def INPUT_TYPES(s):
@@ -20,6 +22,11 @@ class BurnSocialMediaHandle:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "burn_handle"
     CATEGORY = "image/postprocessing"
+    LOGO_URLS = {
+        "x.com": "https://about.x.com/content/dam/about-twitter/x/large-x-logo.png",
+        "github": "https://github.githubassets.com/favicons/favicon.png",
+        "instagram": "https://www.instagram.com/static/images/ico/favicon.ico/36b3ee2d91ed.ico",
+        }
 
     def burn_handle(self, image, handle, platform, position, font_size):
         print(f"-- image.shape start: {image.shape}")
