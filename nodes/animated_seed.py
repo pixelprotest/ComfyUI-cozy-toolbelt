@@ -2,6 +2,9 @@ import re
 import random
 
 class AnimatedSeed:
+    def __init__(self):
+        self.stored_seed = None
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -10,7 +13,6 @@ class AnimatedSeed:
                 "current_frame": ("INT", {"default": 0, "min": 0, "max": 10000}),
                 "mode": (["randomize", "increment"],),
                 "base_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
-                "current_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
         }
 
@@ -27,15 +29,18 @@ class AnimatedSeed:
             new_seed = current_seed
         return new_seed
 
-    def generate_seed(self, keyframes, current_frame, mode, base_seed, current_seed):
+    def generate_seed(self, keyframes, current_frame, mode, base_seed):
         frame_numbers = [int(frame.strip()) for frame in keyframes.split(',')]
 
+        if self.stored_seed is None:
+            self.stored_seed = base_seed
+
         if current_frame in frame_numbers:
-            new_seed = self.get_new_seed(mode, current_seed)
+            new_seed = self.get_new_seed(mode, self.stored_seed)
+            self.stored_seed = new_seed
             return (new_seed,)
 
-        return (current_seed,)
-
+        return (self.stored_seed,)
 NODE_CLASS_MAPPINGS = {
     "AnimatedSeed": AnimatedSeed
 }
