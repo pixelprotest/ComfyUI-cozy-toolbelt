@@ -10,33 +10,31 @@ class AnimatedSeed:
                 "current_frame": ("INT", {"default": 0, "min": 0, "max": 10000}),
                 "mode": (["randomize", "increment"],),
                 "base_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "current_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
         }
 
     RETURN_TYPES = ("INT",)
     FUNCTION = "generate_seed"
     CATEGORY = "utils"
-    _seed = 0
 
-    def get_new_seed(self, mode):
-        if mode=="randomize":
+    def get_new_seed(self, mode, current_seed):
+        if mode == "randomize":
             new_seed = random.randint(0, 0xffffffffffffffff)
-            self._seed = new_seed
-        elif mode=="increment":
-            new_seed = self._seed + 1
-            self._seed = new_seed
-        
-        return self._seed
+        elif mode == "increment":
+            new_seed = current_seed + 1
+        else:
+            new_seed = current_seed
+        return new_seed
 
-    def generate_seed(self, keyframes, current_frame, mode, base_seed):
+    def generate_seed(self, keyframes, current_frame, mode, base_seed, current_seed):
         frame_numbers = [int(frame.strip()) for frame in keyframes.split(',')]
 
         if current_frame in frame_numbers:
-            new_seed = self.get_new_seed(mode)
-            return (new_seed, )
+            new_seed = self.get_new_seed(mode, current_seed)
+            return (new_seed,)
 
-        return (self._seed, )
-
+        return (current_seed,)
 
 NODE_CLASS_MAPPINGS = {
     "AnimatedSeed": AnimatedSeed
